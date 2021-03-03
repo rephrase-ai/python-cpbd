@@ -1,17 +1,12 @@
 # coding: utf-8
 
-from __future__ import (
-    absolute_import,
-    division,
-    print_function,
-    unicode_literals
-)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 from math import atan2, pi
 from sys import argv
 
 import numpy as np
-from scipy.ndimage import imread
+from cv2 import imread, IMREAD_GRAYSCALE
 from skimage.feature import canny
 
 from cpbd.octave import sobel
@@ -27,7 +22,7 @@ BETA = 3.6
 BLOCK_HEIGHT, BLOCK_WIDTH = (64, 64)
 
 # just noticeable widths based on the perceptual experiments
-WIDTH_JNB = np.concatenate([5*np.ones(51), 3*np.ones(205)])
+WIDTH_JNB = np.concatenate([5 * np.ones(51), 3 * np.ones(205)])
 
 
 def compute(image):
@@ -78,12 +73,13 @@ def marziliano_method(edges, image):
     for row in range(img_height):
         for col in range(img_width):
             if gradient_x[row, col] != 0:
-                edge_angles[row, col] = atan2(gradient_y[row, col], gradient_x[row, col]) * (180 / pi)
+                edge_angles[row, col] = atan2(
+                    gradient_y[row, col], gradient_x[row, col]
+                ) * (180 / pi)
             elif gradient_x[row, col] == 0 and gradient_y[row, col] == 0:
-                edge_angles[row,col] = 0
-            elif gradient_x[row, col] == 0 and gradient_y[row, col] == pi/2:
+                edge_angles[row, col] = 0
+            elif gradient_x[row, col] == 0 and gradient_y[row, col] == pi / 2:
                 edge_angles[row, col] = 90
-
 
     if np.any(edge_angles):
 
@@ -95,13 +91,20 @@ def marziliano_method(edges, image):
                 if edges[row, col] == 1:
 
                     # gradient angle = 180 or -180
-                    if quantized_angles[row, col] == 180 or quantized_angles[row, col] == -180:
+                    if (
+                        quantized_angles[row, col] == 180
+                        or quantized_angles[row, col] == -180
+                    ):
                         for margin in range(100 + 1):
                             inner_border = (col - 1) - margin
                             outer_border = (col - 2) - margin
 
                             # outside image or intensity increasing from left to right
-                            if outer_border < 0 or (image[row, outer_border] - image[row, inner_border]) <= 0:
+                            if (
+                                outer_border < 0
+                                or (image[row, outer_border] - image[row, inner_border])
+                                <= 0
+                            ):
                                 break
 
                         width_left = margin + 1
@@ -111,13 +114,16 @@ def marziliano_method(edges, image):
                             outer_border = (col + 2) + margin
 
                             # outside image or intensity increasing from left to right
-                            if outer_border >= img_width or (image[row, outer_border] - image[row, inner_border]) >= 0:
+                            if (
+                                outer_border >= img_width
+                                or (image[row, outer_border] - image[row, inner_border])
+                                >= 0
+                            ):
                                 break
 
                         width_right = margin + 1
 
                         edge_widths[row, col] = width_left + width_right
-
 
                     # gradient angle = 0
                     if quantized_angles[row, col] == 0:
@@ -126,7 +132,11 @@ def marziliano_method(edges, image):
                             outer_border = (col - 2) - margin
 
                             # outside image or intensity decreasing from left to right
-                            if outer_border < 0 or (image[row, outer_border] - image[row, inner_border]) >= 0:
+                            if (
+                                outer_border < 0
+                                or (image[row, outer_border] - image[row, inner_border])
+                                >= 0
+                            ):
                                 break
 
                         width_left = margin + 1
@@ -136,7 +146,11 @@ def marziliano_method(edges, image):
                             outer_border = (col + 2) + margin
 
                             # outside image or intensity decreasing from left to right
-                            if outer_border >= img_width or (image[row, outer_border] - image[row, inner_border]) <= 0:
+                            if (
+                                outer_border >= img_width
+                                or (image[row, outer_border] - image[row, inner_border])
+                                <= 0
+                            ):
                                 break
 
                         width_right = margin + 1
@@ -178,7 +192,7 @@ def _calculate_sharpness_metric(image, edges, edge_widths):
 
                 # calculate the probability of blur detection at the edges
                 # detected in the block
-                prob_blur_detection = 1 - np.exp(-abs(block_widths/block_jnb) ** BETA)
+                prob_blur_detection = 1 - np.exp(-abs(block_widths / block_jnb) ** BETA)
 
                 # update the statistics using the block information
                 for probability in prob_blur_detection:
@@ -205,7 +219,7 @@ def get_block_contrast(block):
     return int(np.max(block) - np.min(block))
 
 
-if __name__ == '__main__':
-    input_image = imread(argv[1], mode='L')
+if __name__ == "__main__":
+    input_image = imread(argv[1], IMREAD_GRAYSCALE)
     sharpness = compute(input_image)
-    print('CPBD sharpness for %s: %f' % (argv[1], sharpness))
+    print("CPBD sharpness for %s: %f" % (argv[1], sharpness))
